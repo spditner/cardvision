@@ -11,7 +11,7 @@ class ShapeDetector:
         perimeter = cv2.arcLength(contour, True)
         # Create an approximate polygon
         # is normal 1-5%
-        approx = cv2.approxPolyDP(contour, 0.02 * perimeter, True)
+        approx = cv2.approxPolyDP(contour, 0.04 * perimeter, True)
 
         if len(approx) == 3:
             shape = "triangle"
@@ -23,9 +23,7 @@ class ShapeDetector:
                 shape = "square"
             else:
                 shape = "rectangle"
-        elif len(approx) == 5:
-            shape = "pentagon"
         else:
-            shape = "circle {}".format(len(approx))
+            shape = "circle"
 
-        return shape
+        return shape + " {}".format(len(approx))
