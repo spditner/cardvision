@@ -26,7 +26,7 @@ def order_points(pts):
     # return the ordered coordinates
     return rect
 
-def four_point_transform(image, pts):
+def four_point_transform(img, pts):
     # obtain a consistent order of the points and unpack them
     # individually
     rect = order_points(pts)
@@ -55,13 +55,13 @@ def four_point_transform(image, pts):
         [0, maxHeight - 1]], dtype = "float32")
     # compute the perspective transform matrix and then apply it
     M = cv2.getPerspectiveTransform(rect, dst)
-    warped = cv2.warpPerspective(image, M, (maxWidth, maxHeight))
+    warped = cv2.warpPerspective(img, M, (maxWidth, maxHeight))
     # return the warped image
     return warped
 
-def look(image):
+def look(img):
     return
-    cv2.imshow("image", image)
+    cv2.imshow("image", img)
     cv2.waitKey(0)
 
 image = cv2.imread(sys.argv[1])
@@ -90,11 +90,6 @@ for i, c in enumerate(cnts):
     cX = int((M["m10"] / M["m00"]) * ratio)
     cY = int((M["m01"] / M["m00"]) * ratio)
 
-    # scale contours back up to original image size
-    c = c.astype("float")
-    c *= ratio
-    c = c.astype("int")
-
     perimeter = cv2.arcLength(c, True)
     approx = cv2.approxPolyDP(c, 0.04 * perimeter, True)
     if len(approx) == 4:
@@ -102,25 +97,43 @@ for i, c in enumerate(cnts):
         # apply the four point tranform to obtain a "birds eye view" of
         # the image
         warped = four_point_transform(image, approx.reshape(4, 2) * ratio)
-        cv2.imshow("Show Boxes", warped)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
+        cv2.imwrite("cards/%02d-four-sided.png" % i, warped)
+    else:
+        c = c.astype("float")
+        c *= ratio
+        c = c.astype("int")
+        rect = cv2.boundingRect(c)
+        x,y,w,h = rect
+        cropped = image[y: y+h, x: x+w]
+        cv2.imwrite("cards/%02d-reject.png" % i, cropped)
+
+for i, c in enumerate(cnts):
+    # scale contours back up to original image size
+    # Why is this not needed for the transform above??
+    c = c.astype("float")
+    c *= ratio
+    c = c.astype("int")
 
     # Draw the contours around the shapes
-    cv2.drawContours(image, [c], -1, (0, 255, 0), 2)
+    perimeter = cv2.arcLength(c, True)
+    approx = cv2.approxPolyDP(c, 0.04 * perimeter, True)
+    if len(approx) == 4:
+        cv2.drawContours(image, [c], -1, (0, 255, 0), 2)
+    else:
+        cv2.drawContours(image, [c], -1, (255, 255, 0), 2)
 
     # extract contour
     # https://stackoverflow.com/questions/44830110/copy-area-inside-contours-to-another-image
     rect = cv2.boundingRect(c)
     x,y,w,h = rect
     # Draw a box around the contour
-    box = cv2.rectangle(image, (x,y), (x+w,y+h), (0,0,255), 2)
     # Clip out the image
-    cropped = image[y: y+h, x: x+w]
+    box = cv2.rectangle(image, (x,y), (x+w,y+h), (0,0,255), 2)
+#    cropped = image[y: y+h, x: x+w]
 #    cv2.imshow("Show Boxes", cropped)
 #    cv2.waitKey(0)
 #    cv2.destroyAllWindows()
-#    cv2.imwrite("blobby"+str(i)+".png", cropped)
+#    cv2.imwrite("cards/card-%02d.png" % i, cropped)
 
 cv2.imshow("image", image)
 cv2.imwrite("final.jpg", image)
