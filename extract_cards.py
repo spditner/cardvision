@@ -3,8 +3,10 @@
 import sys
 
 import imutils
+import utils
 import cv2
 import numpy as np
+from sklearn.cluster import KMeans
 
 def order_points(pts):
     # initialzie a list of coordinates that will be ordered
@@ -59,6 +61,18 @@ def four_point_transform(img, pts):
     # return the warped image
     return warped
 
+def colour_bucket(image, buckets=4):
+    # reshape the image to be a list of pixels
+    image = image.reshape((image.shape[0] * image.shape[1], 3))
+
+    # cluster the pixel intensities
+    clt = KMeans(n_clusters=buckets)
+    clt.fit(image)
+
+    # build a histogram of clusters and then create a figure
+    # representing the number of pixels labeled to each color
+    hist = utils.centroid_histogram(clt)
+
 def look(img):
     return
     cv2.imshow("image", img)
@@ -66,13 +80,13 @@ def look(img):
 
 image = cv2.imread(sys.argv[1])
 look(image)
-resized = imutils.resize(image, width=1200)
-ratio = image.shape[0] / float(resized.shape[0])
-look(resized)
+#resized = imutils.resize(image, width=1200)
+ratio = 1 # image.shape[0] / float(resized.shape[0])
+#look(resized)
 
 # convert the resized image to grayscale, blur it slightly,
 # and threshold it
-blurred = cv2.GaussianBlur(resized, (5, 5), 0)
+blurred = cv2.GaussianBlur(image, (5, 5), 0)
 look(blurred)
 gray = cv2.cvtColor(blurred, cv2.COLOR_BGR2GRAY)
 look(gray)
@@ -85,11 +99,6 @@ cnts = cv2.findContours(thresh.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPL
 cnts = imutils.grab_contours(cnts)
 
 for i, c in enumerate(cnts):
-    # Calculate center of contours
-    M = cv2.moments(c)
-    cX = int((M["m10"] / M["m00"]) * ratio)
-    cY = int((M["m01"] / M["m00"]) * ratio)
-
     perimeter = cv2.arcLength(c, True)
     approx = cv2.approxPolyDP(c, 0.04 * perimeter, True)
     if len(approx) == 4:
@@ -136,5 +145,5 @@ for i, c in enumerate(cnts):
 #    cv2.imwrite("cards/card-%02d.png" % i, cropped)
 
 cv2.imshow("image", image)
-cv2.imwrite("final.jpg", image)
+cv2.imwrite("cards/annotated.png", image)
 cv2.waitKey(0)

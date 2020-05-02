@@ -2,16 +2,18 @@ from scipy.spatial import distance as dist
 from collections import OrderedDict
 import numpy as np
 import cv2
+import sys
 
 class ColourDetector:
-    def __init__(self):
-        colors = OrderedDict({
-            # Use "Digital Color Meter" app to help you find colours on MacOS
-            "red": (255, 0, 0),
-            "green": (0, 255, 0),
-            "blue": (0, 0, 255),
-            "violet": (140, 60, 140),
-        })
+    def __init__(self, colors=None):
+        if not colors:
+            colors = OrderedDict({
+                # Use "Digital Color Meter" app to help you find colours on MacOS
+                "red": (255, 0, 0),
+                "green": (0, 255, 0),
+                "blue": (0, 0, 255),
+                "violet": (140, 60, 140),
+            })
 
         self.lab = np.zeros((len(colors), 1, 3), dtype="uint8")
         self.colorNames = []
@@ -34,4 +36,15 @@ class ColourDetector:
             if d < minDist[0]:
                 minDist = (d, i)
 
+        return self.colorNames[minDist[1]]
+
+    def find(self, color):
+        minDist = (np.inf, None)
+        for (i, row) in enumerate(self.lab):
+            d = dist.euclidean(row[0], color)
+            if d < minDist[0]:
+                minDist = (d, i)
+        sys.stderr.write("minDist: %r\n" % minDist[0])
+        if minDist[0] > 30:
+            return None
         return self.colorNames[minDist[1]]
