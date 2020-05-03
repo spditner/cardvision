@@ -11,7 +11,7 @@ class ColourDetector:
                 # Use "Digital Color Meter" app to help you find colours on MacOS
                 "red": (255, 0, 0),
                 "green": (0, 255, 0),
-                "blue": (0, 0, 255),
+                #"blue": (0, 0, 255),
                 "violet": (140, 60, 140),
             })
 
@@ -22,7 +22,10 @@ class ColourDetector:
             self.lab[i] = rgb
             self.colorNames.append(name)
 
-        self.lab = cv2.cvtColor(self.lab, cv2.COLOR_RGB2LAB)
+        # ΔL* (L* sample minus L* standard) = difference in lightness and darkness (+ = lighter, – = darker)
+        # Δa* (a* sample minus a* standard) = difference in red and green (+ = redder, – = greener)
+        # Δb* (b* sample minus b* standard) = difference in yellow and blue (+ = yellower, – = bluer)
+        # self.lab = cv2.cvtColor(self.lab, cv2.COLOR_RGB2LAB)
 
     def label(self, image, c):
         mask = np.zeros(image.shape[:2], dtype="uint8")

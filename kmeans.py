@@ -16,7 +16,7 @@ ap.add_argument("-c", "--clusters", required=True, type=int, help="# of clusters
 ap.add_argument("-s", "--show", required=False, type=bool, help="Show result", default=False)
 args = vars(ap.parse_args())
 
-def kmeans(image, clusters):
+def kmeans(image, clusters, calibrate=None):
     # load the image and convert it from BGR to RGB so that
     # we can dispaly it with matplotlib
     #image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
@@ -45,17 +45,31 @@ def kmeans(image, clusters):
 
     s_hist = []
     s_clusters = []
-    discarded = 0
+    discarded = 0.0
+    s_discarded = []
     for idx in sorted_idx(hist):
         # Discard any bin that is > 50%
         if hist[idx] > 0.5:
-            discarded += hist[idx]
+            # Assume top discarded is the background
+            if not s_discarded:
+                discarded = hist[idx]
+                s_discarded = clt.cluster_centers_[idx]
             continue
         s_hist.append(hist[idx])
         s_clusters.append(clt.cluster_centers_[idx])
 
+    # Probably a card... If a calibration colour provided, try to match it
+    # RESULT: Did not improve the situation
+    if len(s_hist) == (clusters-1) and len(s_discarded) and calibrate is not None:
+        adj = [None] * len(calibrate)
+        for idx, color in enumerate(calibrate):
+            adj[idx] = color / s_discarded[idx]
+        for idx, _ in enumerate(s_clusters):
+            s_clusters[idx] *= adj[idx]
+        sys.stderr.write(">>> Calibrate %s" % adj)
+
     # Rescale
-    if discarded > 0:
+    if discarded:
         for i, _ in enumerate(s_hist):
             s_hist[i] /= (1-discarded)
 
@@ -67,13 +81,13 @@ def kmeans(image, clusters):
         plt.axis("off")
         plt.imshow(bar)
         plt.show()
-    return OrderedDict(zip(s_hist, s_clusters))
+    return OrderedDict(zip(s_hist, s_clusters)), s_discarded
 
 import glob
 from ColourDetector import ColourDetector
 def compare_many(src, compare_dir, clusters):
     image = cv2.imread(src)
-    km1 = kmeans(image, clusters)
+    km1, calibrate = kmeans(image, clusters)
     detector = ColourDetector(colors=km1)
 
     filenames = glob.glob(compare_dir)
@@ -82,7 +96,7 @@ def compare_many(src, compare_dir, clusters):
         image2 = cv2.imread(filename)
         same_colour = False
         try:
-            km2 = kmeans(image2, clusters)
+            km2, _ = kmeans(image2, clusters) #, calibrate)
         except ValueError:
             sys.stderr.write("Not enough colours")
         else:
@@ -90,6 +104,8 @@ def compare_many(src, compare_dir, clusters):
 
         sys.stderr.write("%s\n%s\n%s\n" % (km1, km2, same_colour))
         sys.stdout.write("%s:%d\n" % (filename, not same_colour))
+
+    sys.stderr.write("%s\n" % calibrate)
 
 if __name__ == "__main__":
     compare_many(
